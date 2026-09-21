@@ -1,0 +1,62 @@
+import {
+  ShieldCheck,
+  Lightbulb,
+  Award,
+  HeartHandshake,
+  Users,
+  GraduationCap,
+  Cpu,
+  Settings2,
+  Server,
+  UserPlus,
+  LifeBuoy,
+  AppWindow,
+  Network,
+  Rocket,
+  Building2,
+  Gauge,
+  Landmark,
+  HeartPulse,
+  ShoppingBag,
+  Factory,
+  Globe2,
+  FileText,
+  ClipboardList,
+  Newspaper,
+  HelpCircle,
+  Sparkles,
+} from 'lucide-react'
+
+// Central registry so content data can reference icons by string name.
+const registry = {
+  ShieldCheck,
+  Lightbulb,
+  Award,
+  HeartHandshake,
+  Users,
+  GraduationCap,
+  Cpu,
+  Settings2,
+  Server,
+  UserPlus,
+  LifeBuoy,
+  AppWindow,
+  Network,
+  Rocket,
+  Building2,
+  Gauge,
+  Landmark,
+  HeartPulse,
+  ShoppingBag,
+  Factory,
+  Globe2,
+  FileText,
+  ClipboardList,
+  Newspaper,
+  HelpCircle,
+}
+
+export default function Icon({ name, ...props }) {
+  const Cmp = registry[name] || Sparkles
+  return <Cmp {...props} />
+}
