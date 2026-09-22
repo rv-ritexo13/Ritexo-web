@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Mail, Phone, MapPin, Globe, Send, CheckCircle2 } from 'lucide-react'
 import { brand, serviceOptions } from '../data/websiteContent'
+import { supabase } from '../lib/supabaseClient'
 import PageHeader from '../components/PageHeader'
 import Reveal from '../components/Reveal'
 
@@ -17,6 +18,8 @@ export default function Contact() {
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const update = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -42,19 +45,28 @@ export default function Contact() {
     return next
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setSubmitError('')
     const next = validate()
     setErrors(next)
     if (Object.keys(next).length > 0) return
 
-    // -----------------------------------------------------------------------
-    // BACKEND HOOK: no backend is implemented (per spec).
-    // Connect an email service / API here, e.g.:
-    //   await fetch('/api/contact', { method: 'POST', body: JSON.stringify(form) })
-    // The `form` object holds all validated field values.
-    // -----------------------------------------------------------------------
-    console.log('Contact form submission (connect a backend here):', form)
+    setSubmitting(true)
+    const { error } = await supabase.from('contacts').insert({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim() || null,
+      company: form.company.trim() || null,
+      service: form.service || null,
+      message: form.message.trim(),
+    })
+    setSubmitting(false)
+
+    if (error) {
+      setSubmitError('Something went wrong. Please try again or email us directly.')
+      return
+    }
 
     setSubmitted(true)
     setForm(EMPTY)
@@ -112,8 +124,7 @@ export default function Contact() {
                   <CheckCircle2 className="h-14 w-14 text-brand-500" />
                   <h3 className="mt-4 text-xl font-bold text-navy-900">Thank you!</h3>
                   <p className="mt-2 max-w-sm text-navy-600">
-                    Your message has been captured. Connect a backend/email service to
-                    receive submissions.
+                    Your message has been received. Our team will get back to you shortly.
                   </p>
                   <button
                     type="button"
@@ -186,8 +197,17 @@ export default function Contact() {
                       />
                     </Field>
                   </div>
-                  <button type="submit" className="btn-primary mt-6 w-full sm:w-auto">
-                    Submit <Send className="h-4 w-4" />
+                  {submitError && (
+                    <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                      {submitError}
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  >
+                    {submitting ? 'Sending…' : 'Submit'} <Send className="h-4 w-4" />
                   </button>
                 </form>
               )}
