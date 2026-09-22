@@ -3,12 +3,12 @@ import react from '@vitejs/plugin-react'
 import { copyFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-// GitHub Pages serves this project at https://<user>.github.io/Ritexo-web/
+// GitHub Pages serves this project at https://<user>.github.io/ritexotech-web/
 // so assets must be requested under that sub-path.
-const base = '/Ritexo-web/'
+const base = '/ritexotech-web/'
 
 // SPA fallback: GitHub Pages has no server-side routing. Copying the built
-// index.html to 404.html means any deep link (e.g. /Ritexo-web/contact) still
+// index.html to 404.html means any deep link (e.g. /ritexotech-web/contact) still
 // boots the app, and React Router then renders the correct route.
 function spaFallback() {
   return {
