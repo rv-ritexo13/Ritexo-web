@@ -5,22 +5,22 @@
 // name it "contact-notify" > paste this file > Deploy.
 //
 // Required secret (Edge Functions > Manage secrets):
-//   RESEND_API_KEY = your Resend API key (re_...)
+//   BREVO_API_KEY = your Brevo v3 API key (xkeysib-...)
 //
 // Optional secret to block abuse of the public function URL:
 //   WEBHOOK_SECRET = any long random string; set the same value as an
 //   "Authorization: Bearer <secret>" header on the Database Webhook.
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET') // optional
 
+// Where enquiry notifications land.
 const TO_EMAIL = 'ritexotech@gmail.com'
-// Resend's shared test sender works without domain verification, but only
-// delivers to the email your Resend account was created with. Once you verify
-// ritexo.com in Resend, change this to e.g. 'Ritexo Website <noreply@ritexo.com>'.
-const FROM_EMAIL = 'Ritexo Website <onboarding@resend.dev>'
+// Must be a verified sender in Brevo (Senders & IPs). ritexotech@gmail.com is
+// already verified on this account.
+const FROM = { name: 'Ritexo Website', email: 'ritexotech@gmail.com' }
 
-const esc = (s: string) =>
+const esc = (s: unknown) =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 Deno.serve(async (req) => {
@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (!RESEND_API_KEY) {
-    return new Response(JSON.stringify({ error: 'RESEND_API_KEY not set' }), { status: 500 })
+  if (!BREVO_API_KEY) {
+    return new Response(JSON.stringify({ error: 'BREVO_API_KEY not set' }), { status: 500 })
   }
 
   let record: Record<string, unknown> = {}
@@ -58,24 +58,25 @@ Deno.serve(async (req) => {
     </table>
   `
 
-  const res = await fetch('https://api.resend.com/emails', {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'api-key': BREVO_API_KEY,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: FROM_EMAIL,
-      to: [TO_EMAIL],
-      reply_to: email || undefined,
-      subject: `New contact: ${name || 'Website enquiry'}`,
-      html,
+      sender: FROM,
+      to: [{ email: TO_EMAIL }],
+      // Reply goes straight to the enquirer.
+      replyTo: email ? { email, name: name || undefined } : undefined,
+      subject: `New enquiry: ${name || 'Website contact'}`,
+      htmlContent: html,
     }),
   })
 
   if (!res.ok) {
     const detail = await res.text()
-    return new Response(JSON.stringify({ error: 'Resend failed', detail }), { status: 502 })
+    return new Response(JSON.stringify({ error: 'Brevo send failed', detail }), { status: 502 })
   }
 
   return new Response(JSON.stringify({ ok: true }), {

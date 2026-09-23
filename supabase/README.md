@@ -9,19 +9,17 @@ browser). Read submissions in Table Editor.
 ## 2. Email notifications on new submissions
 
 Flow: form insert -> Database Webhook -> `contact-notify` Edge Function ->
-Resend -> your inbox.
+Brevo -> your inbox.
 
-### a. Resend
-1. Sign up at https://resend.com with **ritexotech@gmail.com**.
-2. API Keys > Create > copy the `re_...` key.
-3. (Later, to email any address) Domains > add `ritexo.com`, add the DNS
-   records, then change `FROM_EMAIL` in the function to `noreply@ritexo.com`.
+### a. Brevo
+1. Account already created with **ritexotech@gmail.com**; sender verified.
+2. Key: https://app.brevo.com/settings/keys/api > Generate (v3 `xkeysib-...`).
 
 ### b. Deploy the Edge Function (dashboard, no CLI)
 1. Supabase > Edge Functions > Create a function > name `contact-notify`.
 2. Paste `functions/contact-notify/index.ts`, Deploy.
 3. Edge Functions > Manage secrets > add:
-   - `RESEND_API_KEY` = the `re_...` key
+   - `BREVO_API_KEY` = the `xkeysib-...` key
    - `WEBHOOK_SECRET` = any long random string (optional but recommended)
 
 ### c. Database Webhook
