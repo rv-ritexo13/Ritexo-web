@@ -1,50 +1,51 @@
-// Supabase Edge Function: emails you whenever a new row is inserted into
-// public.contacts. Triggered by a Database Webhook (see supabase/README.md).
+// Supabase Edge Function: emails you a contact-form enquiry.
 //
-// Deploy via the Supabase dashboard: Edge Functions > Create a function >
+// Called directly from the website (src/pages/Contact.jsx) right after the row
+// is inserted into public.contacts. No Database Webhook needed — that route
+// fights the anon role's permissions on Supabase's internal hooks table.
+//
+// Deploy via the dashboard: Edge Functions > Create a function >
 // name it "contact-notify" > paste this file > Deploy.
 //
 // Required secret (Edge Functions > Manage secrets):
 //   BREVO_API_KEY = your Brevo v3 API key (xkeysib-...)
-//
-// Optional secret to block abuse of the public function URL:
-//   WEBHOOK_SECRET = any long random string; set the same value as an
-//   "Authorization: Bearer <secret>" header on the Database Webhook.
 
 const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
-const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET') // optional
 
-// Where enquiry notifications land.
 const TO_EMAIL = 'ritexotech@gmail.com'
-// Must be a verified sender in Brevo (Senders & IPs). ritexotech@gmail.com is
-// already verified on this account.
 const FROM = { name: 'Ritexo Website', email: 'ritexotech@gmail.com' }
+
+// Allow the browser to call this function.
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  })
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 Deno.serve(async (req) => {
-  // Optional shared-secret gate.
-  if (WEBHOOK_SECRET) {
-    const auth = req.headers.get('authorization') ?? ''
-    if (auth !== `Bearer ${WEBHOOK_SECRET}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
-  if (!BREVO_API_KEY) {
-    return new Response(JSON.stringify({ error: 'BREVO_API_KEY not set' }), { status: 500 })
-  }
+  if (!BREVO_API_KEY) return json({ error: 'BREVO_API_KEY not set' }, 500)
 
-  let record: Record<string, unknown> = {}
+  let record: Record<string, string> = {}
   try {
     const payload = await req.json()
-    record = payload?.record ?? {}
+    // Accept either { record: {...} } or the fields directly.
+    record = payload?.record ?? payload ?? {}
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const { name, email, phone, company, service, message } = record as Record<string, string>
+  const { name, email, phone, company, service, message } = record
 
   const html = `
     <h2>New contact form submission</h2>
@@ -60,27 +61,16 @@ Deno.serve(async (req) => {
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
-    headers: {
-      'api-key': BREVO_API_KEY,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       sender: FROM,
       to: [{ email: TO_EMAIL }],
-      // Reply goes straight to the enquirer.
       replyTo: email ? { email, name: name || undefined } : undefined,
       subject: `New enquiry: ${name || 'Website contact'}`,
       htmlContent: html,
     }),
   })
 
-  if (!res.ok) {
-    const detail = await res.text()
-    return new Response(JSON.stringify({ error: 'Brevo send failed', detail }), { status: 502 })
-  }
-
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  if (!res.ok) return json({ error: 'Brevo send failed', detail: await res.text() }, 502)
+  return json({ ok: true })
 })

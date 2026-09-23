@@ -53,21 +53,29 @@ export default function Contact() {
     if (Object.keys(next).length > 0) return
 
     setSubmitting(true)
-    const { error } = await supabase.from('contacts').insert({
+    const record = {
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim() || null,
       company: form.company.trim() || null,
       service: form.service || null,
       message: form.message.trim(),
-    })
-    setSubmitting(false)
+    }
+    const { error } = await supabase.from('contacts').insert(record)
 
     if (error) {
+      setSubmitting(false)
       setSubmitError('Something went wrong. Please try again or email us directly.')
       return
     }
 
+    // Fire the email notification. Don't block or fail the submission if the
+    // email step errors — the enquiry is already safely saved in the database.
+    supabase.functions
+      .invoke('contact-notify', { body: { record } })
+      .catch(() => {})
+
+    setSubmitting(false)
     setSubmitted(true)
     setForm(EMPTY)
   }

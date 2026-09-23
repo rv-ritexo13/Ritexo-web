@@ -8,8 +8,9 @@ browser). Read submissions in Table Editor.
 
 ## 2. Email notifications on new submissions
 
-Flow: form insert -> Database Webhook -> `contact-notify` Edge Function ->
-Brevo -> your inbox.
+Flow: form insert -> website calls `contact-notify` Edge Function directly ->
+Brevo -> your inbox. (No Database Webhook — that route fights the anon role's
+permissions on Supabase's internal hooks table.)
 
 ### a. Brevo
 1. Account already created with **ritexotech@gmail.com**; sender verified.
@@ -22,13 +23,10 @@ Brevo -> your inbox.
    - `BREVO_API_KEY` = the `xkeysib-...` key
    - `WEBHOOK_SECRET` = any long random string (optional but recommended)
 
-### c. Database Webhook
-1. Supabase > Database > Webhooks > Create a new hook.
-2. Table `contacts`, events **Insert**.
-3. Type: Supabase Edge Function, select `contact-notify`.
-4. If you set `WEBHOOK_SECRET`, add HTTP header
-   `Authorization: Bearer <that secret>`.
-5. Save.
+### c. No webhook needed
+The website invokes the function directly after a successful insert
+(see `src/pages/Contact.jsx`). If you previously created a Database Webhook on
+`contacts`, delete it — it breaks inserts for the anon role.
 
 ### d. Test
 Submit the contact form on the live site. Check your inbox, and the function
