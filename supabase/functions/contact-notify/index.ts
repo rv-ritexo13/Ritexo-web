@@ -13,7 +13,7 @@
 const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
 
 const TO_EMAIL = 'ritexotech@gmail.com'
-const FROM = { name: 'Ritexo Website', email: 'ritexotech@gmail.com' }
+const FROM = { name: 'Ritexo Technology', email: 'ritexotech@gmail.com' }
 
 // Allow the browser to call this function.
 const cors = {
